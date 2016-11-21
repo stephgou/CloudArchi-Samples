@@ -1,0 +1,386 @@
+﻿{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "resourceNamePrefix": {
+      "type": "string",
+      "defaultValue": "CloudArchi",
+      "maxLength": 11,
+      "metadata": {
+        "description": "Name prefix for the resources"
+      }
+    },
+    "svcPlanSize": {
+      "type": "string",
+      "defaultValue": "S1",
+      "metadata": {
+        "description": "The instance size of the App Service Plan."
+      }
+    },
+    "svcPlanSku": {
+      "type": "string",
+      "allowedValues": [
+        "Free",
+        "Shared",
+        "Basic",
+        "Standard",
+        "Premium"
+      ],
+      "defaultValue": "Standard",
+      "metadata": {
+        "description": "The pricing tier of the App Service plan."
+      }
+    }
+  },
+  "variables": {
+    "shopFrontPlanName": "[concat(parameters('resourceNamePrefix'),'-ShopFrontPlan')]",
+    "shopFrontPlanId": "[resourceId('Microsoft.Web/serverfarms', variables('shopFrontPlanName'))]",
+    "shopFrontwebAppName": "[concat(parameters('resourceNamePrefix'),'-ShopFront')]",
+    "productsApiPlanName": "[concat(parameters('resourceNamePrefix'),'-ProductsApiPlan')]",
+    "productsApiPlanId": "[resourceId('Microsoft.Web/serverfarms', variables('productsApiPlanName'))]",
+    "productsApiName": "[concat(parameters('resourceNamePrefix'),'-ProductsApi')]",
+    "fullProductsApiName": "[concat('http://',variables('productsApiName'),'.azurewebsites.net')]",
+    "ratingsApiPlanName": "[concat(parameters('resourceNamePrefix'),'-RatingsApiPlan')]",
+    "ratingsApiPlanId": "[resourceId('Microsoft.Web/serverfarms', variables('ratingsApiPlanName'))]",
+    "ratingsApiName": "[concat(parameters('resourceNamePrefix'),'-RatingsApi')]",
+    "fullRatingsApiName": "[concat('http://',variables('ratingsApiName'),'.azurewebsites.net')]",
+    "recommandationsApiPlanName": "[concat(parameters('resourceNamePrefix'),'-RecommandationsApiPlan')]",
+    "recommandationsApiPlanId": "[resourceId('Microsoft.Web/serverfarms', variables('recommandationsApiPlanName'))]",
+    "recommandationsApiName": "[concat(parameters('resourceNamePrefix'),'-RecommandationsApi')]",
+    "fullRecommandationsApiName": "[concat('http://',variables('recommandationsApiName'),'.azurewebsites.net')]",
+
+    "webAppSourceControlRepositoryUrl": "https://github.com/stephgou/CloudArchi-forkFromJulien.git",
+    "webAppSourceControlBranch": "master",
+    "apiVersion": "2015-06-15",
+    "webAppApiVersion": "2015-08-01"
+  },
+  "resources": [
+    {
+      "name": "[variables('shopFrontPlanName')]",
+      "type": "Microsoft.Web/serverfarms",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "[variables('webAppApiVersion')]",
+      "tags": {
+        "displayName": "ShopFront App Service Plan"
+      },
+      "sku": {
+        "name": "[parameters('svcPlanSize')]",
+        "tier": "[parameters('svcPlanSku')]",
+        "capacity": 1
+      }
+    },
+    {
+      "name": "[variables('productsApiPlanName')]",
+      "type": "Microsoft.Web/serverfarms",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "[variables('webAppApiVersion')]",
+      "tags": {
+        "displayName": "ProductsApi App Service Plan"
+      },
+      "sku": {
+        "name": "[parameters('svcPlanSize')]",
+        "tier": "[parameters('svcPlanSku')]",
+        "capacity": 1
+      }
+    },
+    {
+      "name": "[variables('ratingsApiPlanName')]",
+      "type": "Microsoft.Web/serverfarms",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "[variables('webAppApiVersion')]",
+      "tags": {
+        "displayName": "RatingsApi App Service Plan"
+      },
+      "sku": {
+        "name": "[parameters('svcPlanSize')]",
+        "tier": "[parameters('svcPlanSku')]",
+        "capacity": 1
+      }
+    },
+    {
+      "name": "[variables('recommandationsApiPlanName')]",
+      "type": "Microsoft.Web/serverfarms",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "[variables('webAppApiVersion')]",
+      "tags": {
+        "displayName": "RecommandationsApi App Service Plan"
+      },
+      "sku": {
+        "name": "[parameters('svcPlanSize')]",
+        "tier": "[parameters('svcPlanSku')]",
+        "capacity": 1
+      }
+    },
+    {
+      "name": "[variables('shopFrontwebAppName')]",
+      "type": "Microsoft.Web/sites",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "[variables('webAppApiVersion')]",
+      "tags": {
+        "displayName": "ShopFront App"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', variables('shopFrontPlanName'))]"
+      ],
+      "properties": {
+        "serverFarmId": "[variables('shopFrontPlanId')]"
+      },
+      "resources": [
+        {
+          "name": "web",
+          "type": "config",
+          "apiVersion": "[variables('webAppApiVersion')]",
+          "dependsOn": [
+            "[resourceId('Microsoft.Web/Sites', variables('shopFrontwebAppName'))]"
+          ],
+          "properties": {
+            "phpVersion": "5.5",
+            "netFrameworkVersion": "v4.0",
+            "use32BitWorkerProcess": false, /* 64-bit platform */
+            "webSocketsEnabled": true,
+            "alwaysOn": true,
+            "requestTracingEnabled": true, /* Failed request tracing, aka 'freb' */
+            "httpLoggingEnabled": true, /* IIS logs (aka Web server logging) */
+            "logsDirectorySizeLimit": 40, /* 40 MB limit for IIS logs */
+            "detailedErrorLoggingEnabled": true, /* Detailed error messages  */
+            "remoteDebuggingEnabled": true,
+            "remoteDebuggingVersion": "VS2013"
+          }
+        },
+        {
+          "name": "appsettings",
+          "type": "config",
+          "apiVersion": "[variables('webAppApiVersion')]",
+          "dependsOn": [
+            "[resourceId('Microsoft.Web/Sites', variables('shopFrontwebAppName'))]"
+          ],
+          "properties": {
+            "WEBSITE_NODE_DEFAULT_VERSION": "5.4.0",
+            "PROJECT": "src/ShopFront",
+            "SHOP_FRONT_PORT": "5000",
+            "SHOP_PRODUCTS_API_URL": "[variables('fullProductsApiName')]",
+            "SHOP_RATINGS_API_URL": "[variables('fullRatingsApiName')]",
+            "SHOP_RECOMMANDATIONS_API_URL": "[variables('fullRecommandationsApiName')]"
+          }
+        },
+        {
+          "name": "web",
+          "type": "sourcecontrols",
+          "apiVersion": "[variables('webAppApiVersion')]",
+          "dependsOn": [
+            "[resourceId('Microsoft.Web/Sites', variables('shopFrontwebAppName'))]"
+          ],
+          "properties": {
+            "RepoUrl": "[variables('webAppSourceControlRepositoryUrl')]",
+            "branch": "[variables('webAppSourceControlBranch')]",
+            "IsManualIntegration": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "[variables('productsApiName')]",
+      "type": "Microsoft.Web/sites",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "[variables('webAppApiVersion')]",
+      "tags": {
+        "displayName": "Products Api"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', variables('productsApiPlanName'))]",
+        "[resourceId('Microsoft.Web/Sites', variables('shopFrontwebAppName'))]"
+      ],
+      "properties": {
+        "serverFarmId": "[variables('productsApiPlanId')]"
+      },
+      "resources": [
+        {
+          "name": "web",
+          "type": "config",
+          "apiVersion": "[variables('webAppApiVersion')]",
+          "dependsOn": [
+            "[resourceId('Microsoft.Web/Sites', variables('productsApiName'))]"
+          ],
+          "properties": {
+            "phpVersion": "5.5",
+            "netFrameworkVersion": "v4.0",
+            "use32BitWorkerProcess": false, /* 64-bit platform */
+            "webSocketsEnabled": true,
+            "alwaysOn": true,
+            "requestTracingEnabled": true, /* Failed request tracing, aka 'freb' */
+            "httpLoggingEnabled": true, /* IIS logs (aka Web server logging) */
+            "logsDirectorySizeLimit": 40, /* 40 MB limit for IIS logs */
+            "detailedErrorLoggingEnabled": true, /* Detailed error messages  */
+            "remoteDebuggingEnabled": true,
+            "remoteDebuggingVersion": "VS2013"
+          }
+        },
+        {
+          "name": "appsettings",
+          "type": "config",
+          "apiVersion": "[variables('webAppApiVersion')]",
+          "dependsOn": [
+            "[resourceId('Microsoft.Web/Sites', variables('productsApiName'))]"
+          ],
+          "properties": {
+            "WEBSITE_NODE_DEFAULT_VERSION": "5.4.0",
+            "PROJECT": "src/ProductsApi",
+            "SHOP_PRODUCTS_API_PORT": "5000"
+          }
+        },
+        {
+          "name": "web",
+          "type": "sourcecontrols",
+          "apiVersion": "[variables('webAppApiVersion')]",
+          "dependsOn": [
+            "[resourceId('Microsoft.Web/Sites', variables('productsApiName'))]"
+          ],
+          "properties": {
+            "RepoUrl": "[variables('webAppSourceControlRepositoryUrl')]",
+            "branch": "[variables('webAppSourceControlBranch')]",
+            "IsManualIntegration": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "[variables('ratingsApiName')]",
+      "type": "Microsoft.Web/sites",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "[variables('webAppApiVersion')]",
+      "tags": {
+        "displayName": "Ratings Api"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', variables('ratingsApiPlanName'))]",
+        "[resourceId('Microsoft.Web/Sites', variables('shopFrontwebAppName'))]",
+        "[resourceId('Microsoft.Web/Sites', variables('productsApiName'))]"
+      ],
+      "properties": {
+        "serverFarmId": "[variables('ratingsApiPlanId')]"
+      },
+      "resources": [
+        {
+          "name": "web",
+          "type": "config",
+          "apiVersion": "[variables('webAppApiVersion')]",
+          "dependsOn": [
+            "[resourceId('Microsoft.Web/Sites', variables('ratingsApiName'))]"
+          ],
+          "properties": {
+            "phpVersion": "5.5",
+            "netFrameworkVersion": "v4.0",
+            "use32BitWorkerProcess": false, /* 64-bit platform */
+            "webSocketsEnabled": true,
+            "alwaysOn": true,
+            "requestTracingEnabled": true, /* Failed request tracing, aka 'freb' */
+            "httpLoggingEnabled": true, /* IIS logs (aka Web server logging) */
+            "logsDirectorySizeLimit": 40, /* 40 MB limit for IIS logs */
+            "detailedErrorLoggingEnabled": true, /* Detailed error messages  */
+            "remoteDebuggingEnabled": true,
+            "remoteDebuggingVersion": "VS2013"
+          }
+        },
+        {
+          "name": "appsettings",
+          "type": "config",
+          "apiVersion": "[variables('webAppApiVersion')]",
+          "dependsOn": [
+            "[resourceId('Microsoft.Web/Sites', variables('ratingsApiName'))]"
+          ],
+          "properties": {
+            "WEBSITE_NODE_DEFAULT_VERSION": "5.4.0",
+            "PROJECT": "src/RatingsApi",
+            "SHOP_RATINGS_API_PORT": "5000"
+          }
+        },
+        {
+          "name": "web",
+          "type": "sourcecontrols",
+          "apiVersion": "[variables('webAppApiVersion')]",
+          "dependsOn": [
+            "[resourceId('Microsoft.Web/Sites', variables('ratingsApiName'))]"
+          ],
+          "properties": {
+            "RepoUrl": "[variables('webAppSourceControlRepositoryUrl')]",
+            "branch": "[variables('webAppSourceControlBranch')]",
+            "IsManualIntegration": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "[variables('recommandationsApiName')]",
+      "type": "Microsoft.Web/sites",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "[variables('webAppApiVersion')]",
+      "tags": {
+        "displayName": "Recommandations Api"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', variables('recommandationsApiPlanName'))]",
+        "[resourceId('Microsoft.Web/Sites', variables('shopFrontwebAppName'))]",
+        "[resourceId('Microsoft.Web/Sites', variables('productsApiName'))]",
+        "[resourceId('Microsoft.Web/Sites', variables('ratingsApiName'))]"
+      ],
+      "properties": {
+        "serverFarmId": "[variables('recommandationsApiPlanId')]"
+      },
+      "resources": [
+        {
+          "name": "web",
+          "type": "config",
+          "apiVersion": "[variables('webAppApiVersion')]",
+          "dependsOn": [
+            "[resourceId('Microsoft.Web/Sites', variables('recommandationsApiName'))]"
+          ],
+          "properties": {
+            "phpVersion": "5.5",
+            "netFrameworkVersion": "v4.0",
+            "use32BitWorkerProcess": false, /* 64-bit platform */
+            "webSocketsEnabled": true,
+            "alwaysOn": true,
+            "requestTracingEnabled": true, /* Failed request tracing, aka 'freb' */
+            "httpLoggingEnabled": true, /* IIS logs (aka Web server logging) */
+            "logsDirectorySizeLimit": 40, /* 40 MB limit for IIS logs */
+            "detailedErrorLoggingEnabled": true, /* Detailed error messages  */
+            "remoteDebuggingEnabled": true,
+            "remoteDebuggingVersion": "VS2013"
+          }
+        },
+        {
+          "name": "appsettings",
+          "type": "config",
+          "apiVersion": "[variables('webAppApiVersion')]",
+          "dependsOn": [
+            "[resourceId('Microsoft.Web/Sites', variables('recommandationsApiName'))]"
+          ],
+          "properties": {
+            "WEBSITE_NODE_DEFAULT_VERSION": "5.4.0",
+            "PROJECT": "src/RecommandationsApi",
+            "SHOP_RECOMMANDATIONS_API_PORT": "5000"
+          }
+        },
+        {
+          "name": "web",
+          "type": "sourcecontrols",
+          "apiVersion": "[variables('webAppApiVersion')]",
+          "dependsOn": [
+            "[resourceId('Microsoft.Web/Sites', variables('recommandationsApiName'))]"
+          ],
+          "properties": {
+            "RepoUrl": "[variables('webAppSourceControlRepositoryUrl')]",
+            "branch": "[variables('webAppSourceControlBranch')]",
+            "IsManualIntegration": true
+          }
+        }
+      ]
+    }
+  ],
+  "outputs": {
+    "result": {
+      "value": "Shop App Provisioning achieved",
+      "type": "string"
+    }
+  }
+}
